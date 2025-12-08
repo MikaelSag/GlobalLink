@@ -1,15 +1,21 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 import Logo from "../components/Logo";
+import { setProfilePicture, removeProfilePicture } from "../redux/imageSlice";
+import { handleImageUpload } from "../utils/imageUtils";
 
 export default function SignupPage() {
   const [step, setStep] = useState(1);
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useDispatch();
   const isEditMode = location.pathname === '/edit-profile';
   const today = new Date().toISOString().split("T")[0];
   const [isCurrentlyEnrolled, setIsCurrentlyEnrolled] = useState(false);
   const [isCurrentlyEmployed, setIsCurrentlyEmployed] = useState(false);
+  const [imageError, setImageError] = useState("");
+  const [imageSize, setImageSize] = useState(null);
   const [formData, setFormData] = useState({
     // Step 1: Basic Info
     firstName: "",
@@ -55,6 +61,7 @@ export default function SignupPage() {
               // Ensure password is not overwritten with undefined if not present in profile
               password: prev.password 
             }));
+            // Note: Profile picture is already in Redux store and will be retrieved via useSelector
           } catch (e) {
             console.error("Failed to load profile for editing", e);
           }
@@ -67,18 +74,102 @@ export default function SignupPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // Get profile picture from Redux store - use the correct key
+  const getCurrentUserKey = () => {
+    if (isEditMode) {
+      return localStorage.getItem("current_user") || formData.username;
+    }
+    if (formData.firstName && formData.lastName) {
+      return formData.firstName + " " + formData.lastName;
+    }
+    return formData.username;
+  };
+
+  const profilePictureBase64 = useSelector(
+    (state) => state.images.profilePictures[getCurrentUserKey()]
+  );
+
+  // Handle profile picture upload and convert to base64
+  const handleProfilePictureChange = async (e) => {
+    setImageError("");
+    setImageSize(null);
+    try {
+      const base64Image = await handleImageUpload(e, {
+        compress: true,
+        maxWidth: 800,
+        maxHeight: 800,
+        quality: 0.8,
+      });
+      
+      // Calculate approximate size in KB
+      const sizeInKB = Math.round((base64Image.length * 0.75) / 1024);
+      setImageSize(sizeInKB);
+      
+      // Determine the correct user key (full name if available, otherwise username)
+      const userKey = isEditMode 
+        ? localStorage.getItem("current_user") || formData.username
+        : (formData.firstName && formData.lastName 
+            ? formData.firstName + " " + formData.lastName 
+            : formData.username || 'temp_user');
+      
+      // Store in Redux
+      dispatch(setProfilePicture({
+        userId: userKey,
+        base64Image: base64Image,
+      }));
+      
+      // Also keep reference in formData for backward compatibility
+      setFormData({ ...formData, profilePicture: e.target.files[0] });
+    } catch (error) {
+      setImageError(error.message);
+      console.error("Error uploading image:", error);
+    }
+  };
+
+  // Handle removing profile picture
+  const handleRemoveProfilePicture = () => {
+    const userKey = isEditMode 
+      ? localStorage.getItem("current_user") || formData.username
+      : (formData.firstName && formData.lastName 
+          ? formData.firstName + " " + formData.lastName 
+          : formData.username || 'temp_user');
+    
+    dispatch(removeProfilePicture({ userId: userKey }));
+    setFormData({ ...formData, profilePicture: null });
+    setImageSize(null);
+    setImageError("");
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
 
+    const fullName = formData.firstName + " " + formData.lastName;
+    
     // Submit form data logic to local storage or backend
-    localStorage.setItem("current_user", formData.firstName + " " + formData.lastName);
+    localStorage.setItem("current_user", fullName);
 
     // Set username to connect with full name
-    localStorage.setItem(formData.username + "_full_name", formData.firstName + " " + formData.lastName);
+    localStorage.setItem(formData.username + "_full_name", fullName);
 
     // Store username and password
     if (!isEditMode) {
       localStorage.setItem(formData.username + "_password", formData.password);
+    }
+    
+    // Ensure profile picture is saved with the correct key (full name)
+    // This handles cases where image was uploaded before firstName/lastName was filled
+    const currentImageKey = getCurrentUserKey();
+    const finalImageKey = fullName;
+    
+    if (profilePictureBase64) {
+      // If keys are different, we need to update Redux with the correct key
+      if (currentImageKey !== finalImageKey) {
+        dispatch(setProfilePicture({
+          userId: finalImageKey,
+          base64Image: profilePictureBase64,
+        }));
+      }
+      // If image was already saved with correct key, it's already in Redux
     }
 
     // Build a full profile object from the form data
@@ -614,15 +705,51 @@ export default function SignupPage() {
 
             {/* Profile Picture */}
             <div className="mb-4">
-              <label className="block mb-1 text-gray-700">Profile Picture</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) =>
-                  setFormData({ ...formData, profilePicture: e.target.files[0] })
-                }
-                className="border p-2 rounded w-full"
-              />
+              <label className="block mb-1 text-gray-700 font-medium">Profile Picture</label>
+              <p className="text-xs text-gray-500 mb-2">Max size: 5MB. Recommended: Square images work best</p>
+              
+              {!profilePictureBase64 ? (
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleProfilePictureChange}
+                  className="border p-2 rounded w-full"
+                />
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-4">
+                    <img
+                      src={profilePictureBase64}
+                      alt="Profile Preview"
+                      className="w-24 h-24 object-cover rounded-full border-2 border-gray-300 shadow-sm"
+                    />
+                    <div className="flex-1">
+                      <p className="text-sm text-green-600 font-medium">✓ Image uploaded</p>
+                      {imageSize && (
+                        <p className="text-xs text-gray-500">Size: ~{imageSize} KB</p>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleRemoveProfilePicture}
+                        className="mt-2 px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition"
+                      >
+                        Remove Image
+                      </button>
+                    </div>
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleProfilePictureChange}
+                    className="border p-2 rounded w-full text-sm"
+                  />
+                  <p className="text-xs text-gray-500">Upload a different image to replace</p>
+                </div>
+              )}
+              
+              {imageError && (
+                <p className="text-red-500 text-sm mt-2 font-medium">⚠ {imageError}</p>
+              )}
             </div>
 
             {/* About Me */}
