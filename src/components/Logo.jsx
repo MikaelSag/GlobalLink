@@ -6,6 +6,15 @@ export default function Logo({ className = 'w-32', ariaLabel = 'GlobalLink Logo'
   const navigate = useNavigate();
   const isHome = location.pathname === '/';
 
+  const handleClick = () => {
+    const currentUser = localStorage.getItem("current_user");
+    if (currentUser) {
+      navigate('/jobs');
+    } else {
+      navigate('/');
+    }
+  };
+
   // Use PUBLIC_URL so the logo path works whether the app is hosted at root or a subpath
   const publicUrl = process.env.PUBLIC_URL || '';
   const img = (
@@ -17,7 +26,7 @@ export default function Logo({ className = 'w-32', ariaLabel = 'GlobalLink Logo'
   return (
     <button
       type="button"
-      onClick={() => navigate('/')}
+      onClick={handleClick}
       className="p-0 bg-transparent border-0 cursor-pointer"
       aria-label={`Go to home`}
     >

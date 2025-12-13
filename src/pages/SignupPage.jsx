@@ -355,7 +355,7 @@ export default function SignupPage() {
             <div className="flex justify-between">
               <button
                 type="button"
-                onClick={() => navigate('/')}
+                onClick={() => isEditMode ? navigate('/current-user-profile') : navigate('/')}
                 className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-3 rounded-xl shadow-sm transition"
               >
                 Back
