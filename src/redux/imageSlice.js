@@ -12,7 +12,7 @@ const imageSlice = createSlice({
       state.profilePictures[userId] = base64Image;
     },
     removeProfilePicture: (state, action) => {
-      const { userId } = action.payload;
+      const userId = action.payload;
       delete state.profilePictures[userId];
     },
     addProjectImage: (state, action) => {

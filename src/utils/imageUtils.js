@@ -124,7 +124,7 @@ export const compressImage = (file, maxWidth = 800, maxHeight = 800, quality = 0
 
 /**
  * Handles image file input and converts to base64
- * @param {Event} event - The file input change event
+ * @param {File|Event} fileOrEvent - The image file or file input change event
  * @param {Object} options - Options for image processing
  * @param {boolean} options.compress - Whether to compress the image (default: true)
  * @param {number} options.maxWidth - Max width for compression
@@ -132,7 +132,7 @@ export const compressImage = (file, maxWidth = 800, maxHeight = 800, quality = 0
  * @param {number} options.quality - Image quality for compression
  * @returns {Promise<string>} - A promise that resolves with the base64 string
  */
-export const handleImageUpload = async (event, options = {}) => {
+export const handleImageUpload = async (fileOrEvent, options = {}) => {
   const {
     compress = true,
     maxWidth = 800,
@@ -140,7 +140,15 @@ export const handleImageUpload = async (event, options = {}) => {
     quality = 0.8,
   } = options;
 
-  const file = event.target.files[0];
+  // Support both File objects and File input events
+  let file;
+  if (fileOrEvent instanceof File) {
+    file = fileOrEvent;
+  } else if (fileOrEvent?.target?.files?.[0]) {
+    file = fileOrEvent.target.files[0];
+  } else {
+    throw new Error('No file provided');
+  }
   
   if (!file) {
     throw new Error('No file selected');

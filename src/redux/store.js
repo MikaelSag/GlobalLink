@@ -1,35 +1,36 @@
-import { configureStore } from '@reduxjs/toolkit';
+import { configureStore, combineReducers } from '@reduxjs/toolkit';
 import { persistStore, persistReducer } from 'redux-persist';
 import storage from 'redux-persist/lib/storage'; // defaults to localStorage
 import imageReducer from './imageSlice';
+import userReducer from './userSlice';
 
 // Persist configuration
 const persistConfig = {
   key: 'root',
   storage,
-  whitelist: ['images'], // Only persist the images slice
+  whitelist: ['images', 'users'], // Persist both slices
 };
 
-const persistedReducer = persistReducer(persistConfig, imageReducer);
+// Combine reducers
+const rootReducer = combineReducers({
+  images: imageReducer,
+  users: userReducer,
+});
+
+// Apply persist to combined reducer
+const persistedReducer = persistReducer(persistConfig, rootReducer);
 
 export const store = configureStore({
-  reducer: {
-    images: persistedReducer,
-  },
+  reducer: persistedReducer,
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
-        // Ignore redux-persist actions
         ignoredActions: [
           'persist/PERSIST',
           'persist/REHYDRATE',
           'persist/REGISTER',
-          'images/setProfilePicture',
-          'images/addProjectImage'
         ],
-        // Ignore these field paths in all actions
-        ignoredActionPaths: ['payload.base64Image', 'register', 'rehydrate'],
-        // Ignore these paths in the state
+        ignoredActionPaths: ['payload.base64Image'],
         ignoredPaths: ['images.profilePictures', 'images.projectImages'],
       },
     }),

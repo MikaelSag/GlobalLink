@@ -45,7 +45,7 @@ export default function JobFeedPage() {
       <div className="absolute -bottom-48 -right-48 w-[700px] h-[700px] rounded-full bg-green-100 opacity-90 filter blur-[6px] blob-animation" />
 
       {/* Content container */}
-      <div className="relative z-10 px-6 py-8">
+      <div className="relative z-10 px-6 py-8 pb-32">
         {/* Header with Logo and Profile */}
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-3">
@@ -79,7 +79,7 @@ export default function JobFeedPage() {
         </div>
 
         {/* Job Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-24">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
           {jobs.map((job) => (
             <div key={job.id} className="bg-white rounded-3xl p-6 shadow-lg max-w-2xl mx-auto w-full job-card">
               <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">

@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import Logo from "../components/Logo";
 import { setProfilePicture, removeProfilePicture } from "../redux/imageSlice";
+import { setCurrentUser, setCredentials, setProfile, setFullNameMapping } from "../redux/userSlice";
 import { handleImageUpload } from "../utils/imageUtils";
 
 export default function SignupPage() {
@@ -16,11 +17,15 @@ export default function SignupPage() {
   const [isCurrentlyEmployed, setIsCurrentlyEmployed] = useState(false);
   const [imageError, setImageError] = useState("");
   const [imageSize, setImageSize] = useState(null);
+  const currentUser = useSelector((state) => state.users?.currentUser) || null;
+  const profilePictures = useSelector((state) => state.images?.profilePictures || {});
+  
   const [formData, setFormData] = useState({
     // Step 1: Basic Info
     firstName: "",
     lastName: "",
     username: "",
+    password: "",
     city: "",
     state: "",
     zip: "",
@@ -46,95 +51,72 @@ export default function SignupPage() {
     certifications: []
   });
 
-  useEffect(() => {
-    if (isEditMode) {
-      const currentUser = localStorage.getItem("current_user");
-      if (currentUser) {
-        const profileKey = currentUser + "_profile";
-        const savedProfile = localStorage.getItem(profileKey);
-        if (savedProfile) {
-          try {
-            const p = JSON.parse(savedProfile);
-            setFormData(prev => ({
-              ...prev,
-              ...p,
-              // Ensure password is not overwritten with undefined if not present in profile
-              password: prev.password 
-            }));
-            // Note: Profile picture is already in Redux store and will be retrieved via useSelector
-          } catch (e) {
-            console.error("Failed to load profile for editing", e);
-          }
-        }
-      }
-    }
-  }, [isEditMode]);
-
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Get profile picture from Redux store - use the correct key
   const getCurrentUserKey = () => {
-    if (isEditMode) {
-      return localStorage.getItem("current_user") || formData.username;
-    }
+    // During signup, only use entered name if both first and last names are filled
     if (formData.firstName && formData.lastName) {
-      return formData.firstName + " " + formData.lastName;
+      return `${formData.firstName} ${formData.lastName}`.trim();
     }
-    return formData.username;
+
+    // In edit mode, use the current Redux user
+    if (isEditMode && currentUser) {
+      return currentUser;
+    }
+
+    // Otherwise, return a temporary key that won't match any saved profile
+    return null;
   };
 
-  const profilePictureBase64 = useSelector(
-    (state) => state.images.profilePictures[getCurrentUserKey()]
-  );
+  // Only show profile picture if we have a valid key
+  // This prevents showing old images when starting a fresh signup
+  const profilePictureBase64 = getCurrentUserKey() 
+    ? (profilePictures?.[getCurrentUserKey()] || null)
+    : null;
 
-  // Handle profile picture upload and convert to base64
+  useEffect(() => {
+    const key = getCurrentUserKey();
+    const img = profilePictures?.[key];
+    if (img) {
+      setImageError("");
+      const sizeInKB = Math.round((img.length * 0.75) / 1024);
+      setImageSize(sizeInKB);
+    }
+  }, [profilePictures, currentUser, formData.firstName, formData.lastName]);
+
   const handleProfilePictureChange = async (e) => {
     setImageError("");
     setImageSize(null);
+    const file = e.target.files?.[0];
+    if (!file) return;
+
     try {
-      const base64Image = await handleImageUpload(e, {
-        compress: true,
-        maxWidth: 800,
-        maxHeight: 800,
-        quality: 0.8,
-      });
+      const base64Image = await handleImageUpload(file);
       
-      // Calculate approximate size in KB
       const sizeInKB = Math.round((base64Image.length * 0.75) / 1024);
       setImageSize(sizeInKB);
-      
-      // Determine the correct user key (full name if available, otherwise username)
-      const userKey = isEditMode 
-        ? localStorage.getItem("current_user") || formData.username
-        : (formData.firstName && formData.lastName 
-            ? formData.firstName + " " + formData.lastName 
-            : formData.username || 'temp_user');
-      
-      // Store in Redux
+
+      // During signup before name entry, use a temporary key
+      const userKey = getCurrentUserKey() || `temp_${Math.random().toString(36).slice(2, 9)}`;
+
       dispatch(setProfilePicture({
         userId: userKey,
-        base64Image: base64Image,
+        base64Image,
       }));
-      
-      // Also keep reference in formData for backward compatibility
-      setFormData({ ...formData, profilePicture: e.target.files[0] });
+
+      setFormData({ ...formData, profilePicture: file });
     } catch (error) {
-      setImageError(error.message);
+      setImageError(error.message || "Failed to process image");
       console.error("Error uploading image:", error);
     }
   };
 
   // Handle removing profile picture
   const handleRemoveProfilePicture = () => {
-    const userKey = isEditMode 
-      ? localStorage.getItem("current_user") || formData.username
-      : (formData.firstName && formData.lastName 
-          ? formData.firstName + " " + formData.lastName 
-          : formData.username || 'temp_user');
-    
-    dispatch(removeProfilePicture({ userId: userKey }));
+    const userKey = getCurrentUserKey();
+    dispatch(removeProfilePicture(userKey));
     setFormData({ ...formData, profilePicture: null });
     setImageSize(null);
     setImageError("");
@@ -143,33 +125,33 @@ export default function SignupPage() {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    const fullName = formData.firstName + " " + formData.lastName;
-    
-    // Submit form data logic to local storage or backend
-    localStorage.setItem("current_user", fullName);
+    const fullName = `${formData.firstName} ${formData.lastName}`.trim();
 
-    // Set username to connect with full name
-    localStorage.setItem(formData.username + "_full_name", fullName);
+    dispatch(setCurrentUser(fullName));
 
-    // Store username and password
     if (!isEditMode) {
-      localStorage.setItem(formData.username + "_password", formData.password);
+      dispatch(setCredentials({
+        username: formData.username,
+        password: formData.password,
+      }));
     }
-    
-    // Ensure profile picture is saved with the correct key (full name)
-    // This handles cases where image was uploaded before firstName/lastName was filled
+
+    dispatch(setFullNameMapping({
+      username: formData.username,
+      fullName,
+    }));
+
     const currentImageKey = getCurrentUserKey();
     const finalImageKey = fullName;
-    
+
     if (profilePictureBase64) {
-      // If keys are different, we need to update Redux with the correct key
-      if (currentImageKey !== finalImageKey) {
-        dispatch(setProfilePicture({
-          userId: finalImageKey,
-          base64Image: profilePictureBase64,
-        }));
+      dispatch(setProfilePicture({
+        userId: finalImageKey,
+        base64Image: profilePictureBase64,
+      }));
+      if (currentImageKey && currentImageKey !== finalImageKey) {
+        dispatch(removeProfilePicture(currentImageKey));
       }
-      // If image was already saved with correct key, it's already in Redux
     }
 
     // Build a full profile object from the form data
@@ -199,13 +181,18 @@ export default function SignupPage() {
       aboutMe: formData.aboutMe,
       projects: formData.projects,
       certifications: formData.certifications,
-      // profile picture (store filename if available)
-      profilePictureName: formData.profilePicture ? formData.profilePicture.name : null
+      profilePictureName: formData.profilePicture ? formData.profilePicture.name : null,
     };
 
-    // Save profile under username_profile so the search picks it up, and also under the username key for UserProfile compatibility
+    dispatch(setProfile({ fullName, profile }));
+
+    localStorage.setItem("current_user", fullName);
+    localStorage.setItem(`${formData.username}_full_name`, fullName);
+    if (!isEditMode) {
+      localStorage.setItem(`${formData.username}_password`, formData.password);
+    }
     try {
-      localStorage.setItem(formData.firstName + " " + formData.lastName + "_profile", JSON.stringify(profile));
+      localStorage.setItem(`${fullName}_profile`, JSON.stringify(profile));
     } catch (err) {
       console.warn('Failed to save profile to localStorage', err);
     }
