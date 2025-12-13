@@ -1,7 +1,7 @@
 import './App.css';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import SignupPage from './pages/SignupPage';
 import WelcomePage from './pages/welcomePage';
 import LoginPage from './pages/LoginPage';
@@ -184,7 +184,6 @@ localStorage.setItem("Charlie Brown_profile", JSON.stringify({
 
 function App() {
   const dispatch = useDispatch();
-  const profilePictures = useSelector((state) => state.images.profilePictures);
 
   // Load default avatars for users from users.json on mount
   useEffect(() => {

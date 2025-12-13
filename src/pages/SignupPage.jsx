@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import Logo from "../components/Logo";
@@ -55,7 +55,7 @@ export default function SignupPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const getCurrentUserKey = () => {
+  const getCurrentUserKey = useCallback(() => {
     // During signup, only use entered name if both first and last names are filled
     if (formData.firstName && formData.lastName) {
       return `${formData.firstName} ${formData.lastName}`.trim();
@@ -68,7 +68,7 @@ export default function SignupPage() {
 
     // Otherwise, return a temporary key that won't match any saved profile
     return null;
-  };
+  }, [formData.firstName, formData.lastName, isEditMode, currentUser]);
 
   // Only show profile picture if we have a valid key
   // This prevents showing old images when starting a fresh signup
@@ -84,7 +84,7 @@ export default function SignupPage() {
       const sizeInKB = Math.round((img.length * 0.75) / 1024);
       setImageSize(sizeInKB);
     }
-  }, [profilePictures, currentUser, formData.firstName, formData.lastName]);
+  }, [profilePictures, currentUser, formData.firstName, formData.lastName, getCurrentUserKey]);
 
   const handleProfilePictureChange = async (e) => {
     setImageError("");
