@@ -519,6 +519,7 @@ export default function SignupPage() {
             <option value="Morocco" />
             <option value="Nepal" />
             <option value="Nigeria" />
+            <option value="Other"/>
             <option value="Panama" />
             <option value="Pakistan" />
             <option value="Paraguay" />
@@ -545,7 +546,6 @@ export default function SignupPage() {
             value={formData.visaType}
             onChange={handleChange}
             className="border p-2 rounded w-full mb-4"
-            required
             >
             <option value="">Select Visa Type</option>
             <option value="F-1">F-1</option>
@@ -553,6 +553,7 @@ export default function SignupPage() {
             <option value="H-1B">H-1B</option>
             <option value="OPT">OPT</option>
             <option value="CPT">CPT</option>
+            <option value="U.S. Citizen">U.S. Citizen</option>
             <option value="Other">Other</option>
             </select>
 
@@ -581,21 +582,12 @@ export default function SignupPage() {
                 Back
             </button>
 
-            <div className="flex gap-2">
-                <button
-                type="button"
-                onClick={() => setStep(5)} // skip
-                className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded"
-                >
-                Skip
-                </button>
-
                 <button
                 type="button"
                 onClick={() => setStep(5)} // next
-                disabled={!formData.country || !formData.visaType}
+                disabled={!formData.country}
                 className={`bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded ${
-                    !formData.country || !formData.visaType
+                    !formData.country
                     ? "opacity-50 cursor-not-allowed"
                     : ""
                 }`}
@@ -603,7 +595,6 @@ export default function SignupPage() {
                 Next
                 </button>
               </div>
-            </div>
           </>
         )}
 
