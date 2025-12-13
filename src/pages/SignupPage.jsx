@@ -1,20 +1,31 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 import Logo from "../components/Logo";
+import { setProfilePicture, removeProfilePicture } from "../redux/imageSlice";
+import { setCurrentUser, setCredentials, setProfile, setFullNameMapping } from "../redux/userSlice";
+import { handleImageUpload } from "../utils/imageUtils";
 
 export default function SignupPage() {
   const [step, setStep] = useState(1);
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useDispatch();
   const isEditMode = location.pathname === '/edit-profile';
   const today = new Date().toISOString().split("T")[0];
   const [isCurrentlyEnrolled, setIsCurrentlyEnrolled] = useState(false);
   const [isCurrentlyEmployed, setIsCurrentlyEmployed] = useState(false);
+  const [imageError, setImageError] = useState("");
+  const [imageSize, setImageSize] = useState(null);
+  const currentUser = useSelector((state) => state.users?.currentUser) || null;
+  const profilePictures = useSelector((state) => state.images?.profilePictures || {});
+  
   const [formData, setFormData] = useState({
     // Step 1: Basic Info
     firstName: "",
     lastName: "",
     username: "",
+    password: "",
     city: "",
     state: "",
     zip: "",
@@ -40,45 +51,107 @@ export default function SignupPage() {
     certifications: []
   });
 
-  useEffect(() => {
-    if (isEditMode) {
-      const currentUser = localStorage.getItem("current_user");
-      if (currentUser) {
-        const profileKey = currentUser + "_profile";
-        const savedProfile = localStorage.getItem(profileKey);
-        if (savedProfile) {
-          try {
-            const p = JSON.parse(savedProfile);
-            setFormData(prev => ({
-              ...prev,
-              ...p,
-              // Ensure password is not overwritten with undefined if not present in profile
-              password: prev.password 
-            }));
-          } catch (e) {
-            console.error("Failed to load profile for editing", e);
-          }
-        }
-      }
-    }
-  }, [isEditMode]);
-
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const getCurrentUserKey = useCallback(() => {
+    // During signup, only use entered name if both first and last names are filled
+    if (formData.firstName && formData.lastName) {
+      return `${formData.firstName} ${formData.lastName}`.trim();
+    }
+
+    // In edit mode, use the current Redux user
+    if (isEditMode && currentUser) {
+      return currentUser;
+    }
+
+    // Otherwise, return a temporary key that won't match any saved profile
+    return null;
+  }, [formData.firstName, formData.lastName, isEditMode, currentUser]);
+
+  // Only show profile picture if we have a valid key
+  // This prevents showing old images when starting a fresh signup
+  const profilePictureBase64 = getCurrentUserKey() 
+    ? (profilePictures?.[getCurrentUserKey()] || null)
+    : null;
+
+  useEffect(() => {
+    const key = getCurrentUserKey();
+    const img = profilePictures?.[key];
+    if (img) {
+      setImageError("");
+      const sizeInKB = Math.round((img.length * 0.75) / 1024);
+      setImageSize(sizeInKB);
+    }
+  }, [profilePictures, currentUser, formData.firstName, formData.lastName, getCurrentUserKey]);
+
+  const handleProfilePictureChange = async (e) => {
+    setImageError("");
+    setImageSize(null);
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const base64Image = await handleImageUpload(file);
+      
+      const sizeInKB = Math.round((base64Image.length * 0.75) / 1024);
+      setImageSize(sizeInKB);
+
+      // During signup before name entry, use a temporary key
+      const userKey = getCurrentUserKey() || `temp_${Math.random().toString(36).slice(2, 9)}`;
+
+      dispatch(setProfilePicture({
+        userId: userKey,
+        base64Image,
+      }));
+
+      setFormData({ ...formData, profilePicture: file });
+    } catch (error) {
+      setImageError(error.message || "Failed to process image");
+      console.error("Error uploading image:", error);
+    }
+  };
+
+  // Handle removing profile picture
+  const handleRemoveProfilePicture = () => {
+    const userKey = getCurrentUserKey();
+    dispatch(removeProfilePicture(userKey));
+    setFormData({ ...formData, profilePicture: null });
+    setImageSize(null);
+    setImageError("");
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // Submit form data logic to local storage or backend
-    localStorage.setItem("current_user", formData.firstName + " " + formData.lastName);
+    const fullName = `${formData.firstName} ${formData.lastName}`.trim();
 
-    // Set username to connect with full name
-    localStorage.setItem(formData.username + "_full_name", formData.firstName + " " + formData.lastName);
+    dispatch(setCurrentUser(fullName));
 
-    // Store username and password
     if (!isEditMode) {
-      localStorage.setItem(formData.username + "_password", formData.password);
+      dispatch(setCredentials({
+        username: formData.username,
+        password: formData.password,
+      }));
+    }
+
+    dispatch(setFullNameMapping({
+      username: formData.username,
+      fullName,
+    }));
+
+    const currentImageKey = getCurrentUserKey();
+    const finalImageKey = fullName;
+
+    if (profilePictureBase64) {
+      dispatch(setProfilePicture({
+        userId: finalImageKey,
+        base64Image: profilePictureBase64,
+      }));
+      if (currentImageKey && currentImageKey !== finalImageKey) {
+        dispatch(removeProfilePicture(currentImageKey));
+      }
     }
 
     // Build a full profile object from the form data
@@ -108,13 +181,18 @@ export default function SignupPage() {
       aboutMe: formData.aboutMe,
       projects: formData.projects,
       certifications: formData.certifications,
-      // profile picture (store filename if available)
-      profilePictureName: formData.profilePicture ? formData.profilePicture.name : null
+      profilePictureName: formData.profilePicture ? formData.profilePicture.name : null,
     };
 
-    // Save profile under username_profile so the search picks it up, and also under the username key for UserProfile compatibility
+    dispatch(setProfile({ fullName, profile }));
+
+    localStorage.setItem("current_user", fullName);
+    localStorage.setItem(`${formData.username}_full_name`, fullName);
+    if (!isEditMode) {
+      localStorage.setItem(`${formData.username}_password`, formData.password);
+    }
     try {
-      localStorage.setItem(formData.firstName + " " + formData.lastName + "_profile", JSON.stringify(profile));
+      localStorage.setItem(`${fullName}_profile`, JSON.stringify(profile));
     } catch (err) {
       console.warn('Failed to save profile to localStorage', err);
     }
@@ -614,15 +692,51 @@ export default function SignupPage() {
 
             {/* Profile Picture */}
             <div className="mb-4">
-              <label className="block mb-1 text-gray-700">Profile Picture</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) =>
-                  setFormData({ ...formData, profilePicture: e.target.files[0] })
-                }
-                className="border p-2 rounded w-full"
-              />
+              <label className="block mb-1 text-gray-700 font-medium">Profile Picture</label>
+              <p className="text-xs text-gray-500 mb-2">Max size: 5MB. Recommended: Square images work best</p>
+              
+              {!profilePictureBase64 ? (
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleProfilePictureChange}
+                  className="border p-2 rounded w-full"
+                />
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-4">
+                    <img
+                      src={profilePictureBase64}
+                      alt="Profile Preview"
+                      className="w-24 h-24 object-cover rounded-full border-2 border-gray-300 shadow-sm"
+                    />
+                    <div className="flex-1">
+                      <p className="text-sm text-green-600 font-medium">✓ Image uploaded</p>
+                      {imageSize && (
+                        <p className="text-xs text-gray-500">Size: ~{imageSize} KB</p>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleRemoveProfilePicture}
+                        className="mt-2 px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition"
+                      >
+                        Remove Image
+                      </button>
+                    </div>
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleProfilePictureChange}
+                    className="border p-2 rounded w-full text-sm"
+                  />
+                  <p className="text-xs text-gray-500">Upload a different image to replace</p>
+                </div>
+              )}
+              
+              {imageError && (
+                <p className="text-red-500 text-sm mt-2 font-medium">⚠ {imageError}</p>
+              )}
             </div>
 
             {/* About Me */}

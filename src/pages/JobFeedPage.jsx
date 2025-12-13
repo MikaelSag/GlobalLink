@@ -1,4 +1,6 @@
 import React from "react";
+import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import Logo from "../components/Logo";
 import SignOutButton from "../components/SignOutButton";
 import { jobs } from "../jobs";
@@ -8,6 +10,9 @@ import { jobs } from "../jobs";
 import BottomNav from "../components/BottomNav";
 
 export default function JobFeedPage() {
+  const navigate = useNavigate();
+  const profilePictures = useSelector((state) => state.images.profilePictures);
+  
   // to make the following badge work.
   const currentUser = localStorage.getItem("current_user");
 
@@ -40,7 +45,7 @@ export default function JobFeedPage() {
       <div className="absolute -bottom-48 -right-48 w-[700px] h-[700px] rounded-full bg-green-100 opacity-90 filter blur-[6px] blob-animation" />
 
       {/* Content container */}
-      <div className="relative z-10 px-6 py-8">
+      <div className="relative z-10 px-6 py-8 pb-32">
         {/* Header with Logo and Profile */}
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-3">
@@ -52,17 +57,29 @@ export default function JobFeedPage() {
 
           {/* Profile Icon */}
           <div className="flex items-center gap-3">
-            <button className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-6 h-6 text-gray-600">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
+            <button 
+              onClick={() => navigate('/current-user-profile')}
+              className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden border-2 border-gray-300 hover:border-gray-400 transition cursor-pointer"
+              title="View Profile"
+            >
+              {profilePictures[currentUser] ? (
+                <img
+                  src={profilePictures[currentUser]}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-6 h-6 text-gray-600">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              )}
             </button>
             <SignOutButton className="sign-out-btn-feed" />
           </div>
         </div>
 
         {/* Job Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-24">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
           {jobs.map((job) => (
             <div key={job.id} className="bg-white rounded-3xl p-6 shadow-lg max-w-2xl mx-auto w-full job-card">
               <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">

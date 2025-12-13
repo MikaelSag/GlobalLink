@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useSelector } from "react-redux";
 import "./UserProfile.css";
 import SignOutButton from "../components/SignOutButton";
 import BottomNav from "../components/BottomNav";
@@ -24,6 +25,7 @@ export default function UserProfile() {
   const [profile, setProfile] = useState(null);
   const [displayName, setDisplayName] = useState("");
   const [friendStatus, setFriendStatus] = useState("idle"); // idle | pending | self
+  const profilePictures = useSelector((state) => state.images.profilePictures);
 
   // Determine which username to show: param > query/current_user
   const resolveName = () => {
@@ -181,7 +183,16 @@ export default function UserProfile() {
       <div className="profile-content">
         <button className="back-btn" onClick={() => navigate('/jobs')}>←</button>
 
-        <div className="avatar" aria-hidden="true">{ /* could render image if profile.profilePictureName exists */ }</div>
+        <div className="avatar" aria-hidden="true">
+          {profilePictures[displayName] ? (
+            <img
+              src={profilePictures[displayName]}
+              alt={displayName}
+            />
+          ) : (
+            <span style={{ fontSize: '4rem' }}>👤</span>
+          )}
+        </div>
 
         <h2 className="user-name">{displayName || 'Unknown'}</h2>
         <SignOutButton className="sign-out-btn" />

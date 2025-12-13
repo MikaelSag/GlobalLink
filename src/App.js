@@ -1,5 +1,7 @@
 import './App.css';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useDispatch } from 'react-redux';
 import SignupPage from './pages/SignupPage';
 import WelcomePage from './pages/welcomePage';
 import LoginPage from './pages/LoginPage';
@@ -7,7 +9,9 @@ import JobFeedPage from './pages/JobFeedPage';
 import UserSearch from './pages/UserSearch';  
 import UserProfile from './pages/UserProfile'; 
 import JobPreferences from './pages/JobPreferences';
-import CurrentUserProfile from './pages/CurrentUserProfile'; 
+import CurrentUserProfile from './pages/CurrentUserProfile';
+import { setProfilePicture } from './redux/imageSlice';
+import { loadDefaultAvatars, generateAvatarBase64 } from './utils/avatarGenerator'; 
 
 // Clear Local Storage for testing purposes
 //localStorage.clear();
@@ -179,6 +183,27 @@ localStorage.setItem("Charlie Brown_profile", JSON.stringify({
 }));
 
 function App() {
+  const dispatch = useDispatch();
+
+  // Load default avatars for users from users.json on mount
+  useEffect(() => {
+    // Load default avatars for fake users from users.json
+    loadDefaultAvatars(dispatch, setProfilePicture);
+    
+    // Also generate avatars for hardcoded test users
+    const testUsers = ["Jane Doe", "John Paul", "Alice Land", "Bob Stark", "Charlie Brown"];
+    testUsers.forEach(name => {
+      const avatarBase64 = generateAvatarBase64(name, 400);
+      dispatch(setProfilePicture({
+        userId: name,
+        base64Image: avatarBase64,
+      }));
+    });
+    
+    console.log('Default avatars loaded for demo users');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array - only run once on mount
+
   return (
     <BrowserRouter>
       <Routes>
