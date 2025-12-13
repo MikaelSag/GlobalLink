@@ -70,7 +70,6 @@ export default function UserSearch() {
   return (
     <div className="us-page">
       <header className="us-header">
-        <button className="us-back" onClick={() => navigate(-1)}>←</button>
         <div className="relative z-10 w-full max-w-4xl mb-8">
           <div className="logobox">
             <Logo className="w-[200px] mb-2" />
