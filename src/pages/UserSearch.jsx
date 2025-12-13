@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import "./UserSearch.css";
 import Logo from "../components/Logo";
 import SignOutButton from "../components/SignOutButton";
@@ -9,6 +10,7 @@ export default function UserSearch() {
   const [query, setQuery] = useState("");
   const [users, setUsers] = useState([]);
   const navigate = useNavigate();
+  const profilePictures = useSelector((state) => state.images.profilePictures);
 
   // Load users from public/users.json and localStorage profiles
   useEffect(() => {
@@ -91,7 +93,16 @@ export default function UserSearch() {
             className="us-card"
             onClick={() => navigate(`/profile/${encodeURIComponent(u.name)}`)}
           >
-            <div className="us-avatar">👤</div>
+            <div className="us-avatar">
+              {profilePictures[u.name] ? (
+                <img
+                  src={profilePictures[u.name]}
+                  alt={u.name}
+                />
+              ) : (
+                '👤'
+              )}
+            </div>
             <div className="us-name">{u.name}</div>
           </div>
         ))}
