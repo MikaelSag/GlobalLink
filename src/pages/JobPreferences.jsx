@@ -1,11 +1,13 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import Logo from "../components/Logo";
 import SignOutButton from "../components/SignOutButton";
 
 export default function JobPreferences() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [step, setStep] = useState(1);
+  const isEditMode = location.pathname === "/edit-job-preferences";
   
   const ROLE_OPTIONS = ["Software Engineer", "Data Analyst", "Web Developer", "Cybersecurity", "Product Manager"];
   const LOCATION_OPTIONS = ["Dallas", "Plano", "Frisco", "Allen", "Richardson"];
@@ -34,6 +36,43 @@ export default function JobPreferences() {
   const [followedEmployers, setFollowedEmployers] = useState(
     employers.reduce((acc, emp) => ({ ...acc, [emp.name]: false }), {})
   );
+
+  // Load existing job preferences when in edit mode
+  useEffect(() => {
+    const currentUser = localStorage.getItem('current_user');
+    if (isEditMode && currentUser) {
+      const profileKey = currentUser + '_profile';
+      const savedProfile = localStorage.getItem(profileKey);
+      
+      if (savedProfile) {
+        try {
+          const profile = JSON.parse(savedProfile);
+          
+          // Load job preferences
+          if (profile.jobPreferences) {
+            setPreferences({
+              lookingFor: profile.jobPreferences.lookingFor || "",
+              desiredRoles: profile.jobPreferences.desiredRoles || [],
+              desiredLocations: profile.jobPreferences.desiredLocations || [],
+              desiredIndustry: profile.jobPreferences.desiredIndustry || [],
+              requireSponsorship: profile.jobPreferences.requireSponsorship || false
+            });
+          }
+          
+          // Load followed employers
+          if (profile.followedEmployers && Array.isArray(profile.followedEmployers)) {
+            const followed = {};
+            employers.forEach(emp => {
+              followed[emp.name] = profile.followedEmployers.includes(emp.name);
+            });
+            setFollowedEmployers(followed);
+          }
+        } catch (e) {
+          console.warn("Failed to load job preferences", e);
+        }
+      }
+    }
+  }, [isEditMode, employers]);
 
   const handlePreferenceChange = (e) => {
     const { name, value, type, checked } = e.target;

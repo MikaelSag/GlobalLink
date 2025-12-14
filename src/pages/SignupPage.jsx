@@ -76,6 +76,50 @@ export default function SignupPage() {
     ? (profilePictures?.[getCurrentUserKey()] || null)
     : null;
 
+  // Load profile data ONCE when entering edit mode
+  useEffect(() => {
+    if (isEditMode && currentUser) {
+      const currentProfile = localStorage.getItem(currentUser + "_profile");
+
+      if (currentProfile) {
+        try {
+          const profileData = JSON.parse(currentProfile);
+
+          // Populate form with existing data
+          setFormData({
+            firstName: profileData.firstName || "",
+            lastName: profileData.lastName || "",
+            username: profileData.username || "",
+            password: "",
+            city: profileData.city || "",
+            state: profileData.state || "",
+            zip: profileData.zip || "",
+            age: profileData.age || "",
+            company: profileData.company || "",
+            title: profileData.title || "",
+            startDate: profileData.startDate || "",
+            endDate: profileData.endDate || "",
+            university: profileData.university || "",
+            major: profileData.major || "",
+            eduStartDate: profileData.eduStartDate || "",
+            eduEndDate: profileData.eduEndDate || "",
+            country: profileData.country || "",
+            visaType: profileData.visaType || "",
+            seekingWorkAuth: profileData.seekingWorkAuth || false,
+            profilePicture: null, // File input cannot be pre-filled
+            aboutMe: profileData.aboutMe || "",
+            projects: profileData.projects || [],
+            certifications: profileData.certifications || []
+          });
+        } catch (e) {
+          console.warn("Failed to load profile data", e);
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditMode, currentUser]);
+
+  // Separate effect for image display
   useEffect(() => {
     const key = getCurrentUserKey();
     const img = profilePictures?.[key];
@@ -84,7 +128,7 @@ export default function SignupPage() {
       const sizeInKB = Math.round((img.length * 0.75) / 1024);
       setImageSize(sizeInKB);
     }
-  }, [profilePictures, currentUser, formData.firstName, formData.lastName, getCurrentUserKey]);
+  }, [profilePictures, getCurrentUserKey]);
 
   const handleProfilePictureChange = async (e) => {
     setImageError("");
@@ -125,16 +169,45 @@ export default function SignupPage() {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    const fullName = `${formData.firstName} ${formData.lastName}`.trim();
+    // Generate new fullName from current form data
+    const newFullName = `${formData.firstName} ${formData.lastName}`.trim();
+    
+    // In edit mode, handle transition from old to new identity
+    if (isEditMode && currentUser) {
+      // Get the old profile data
+      const oldProfile = localStorage.getItem(currentUser + "_profile");
+      let oldUsername = formData.username;
+      
+      if(oldProfile) {
+        try {
+          const oldData = JSON.parse(oldProfile);
+          oldUsername = oldData.username;
+        } catch (e) {
+          console.warn("Could not parse old profile", e);
+        }
+      }
+      
+      // If username changed, clean up old credentials
+      if (oldUsername !== formData.username) {
+        localStorage.removeItem(`${oldUsername}_password`);
+        localStorage.removeItem(`${oldUsername}_full_name`);
+      }
+      
+      // If fullName changed, remove old profile
+      if (currentUser !== newFullName) {
+        localStorage.removeItem(`${currentUser}_profile`);
+      }
+    }
+
+    const fullName = newFullName;
 
     dispatch(setCurrentUser(fullName));
 
-    if (!isEditMode) {
-      dispatch(setCredentials({
-        username: formData.username,
-        password: formData.password,
-      }));
-    }
+    // Always save credentials (for both signup and edit)
+    dispatch(setCredentials({
+      username: formData.username,
+      password: formData.password,
+    }));
 
     dispatch(setFullNameMapping({
       username: formData.username,
@@ -188,9 +261,12 @@ export default function SignupPage() {
 
     localStorage.setItem("current_user", fullName);
     localStorage.setItem(`${formData.username}_full_name`, fullName);
-    if (!isEditMode) {
+    
+    // Only update password if one was provided (for edit mode, password is optional)
+    if (formData.password) {
       localStorage.setItem(`${formData.username}_password`, formData.password);
     }
+    
     try {
       localStorage.setItem(`${fullName}_profile`, JSON.stringify(profile));
     } catch (err) {
@@ -298,19 +374,23 @@ export default function SignupPage() {
               placeholder="* Username"
               value={formData.username}
               onChange={handleChange}
-              className="w-full bg-green-50 placeholder-gray-400 text-gray-800 rounded-xl py-4 px-6 mb-4 shadow-[0_10px_15px_-6px_rgba(0,0,0,0.12)] border border-transparent focus:outline-none"
+              disabled={isEditMode}
+              className="w-full bg-green-50 placeholder-gray-400 text-gray-800 rounded-xl py-4 px-6 mb-4 shadow-[0_10px_15px_-6px_rgba(0,0,0,0.12)] border border-transparent focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
               required
             />
+            {isEditMode && (
+              <p className="text-xs text-gray-500 -mt-3 mb-4">Username cannot be changed</p>
+            )}
 
             {/* Password */}
             <input
               name="password"
-              placeholder="* Password"
+              placeholder={isEditMode ? "New Password (leave blank to keep current)" : "* Password"}
               value={formData.password}
               onChange={handleChange}
               type="password"
               className="w-full bg-green-50 placeholder-gray-400 text-gray-800 rounded-xl py-4 px-6 mb-4 shadow-[0_10px_15px_-6px_rgba(0,0,0,0.12)] border border-transparent focus:outline-none"
-              required
+              required={!isEditMode}
             />
             <div className="grid grid-cols-3 gap-4 mb-4">
 
@@ -332,9 +412,14 @@ export default function SignupPage() {
             />
             <input
               name="zip"
+              type="text"
               placeholder="* Zip"
               value={formData.zip}
               onChange={handleChange}
+              pattern="[0-9]{5}"
+              inputMode="numeric"
+              maxLength="5"
+              onInput={(e) => e.target.value = e.target.value.replace(/[^0-9]/g, '')}
               className="w-full bg-green-50 placeholder-gray-400 text-gray-800 rounded-xl py-4 px-6 shadow-[0_10px_15px_-6px_rgba(0,0,0,0.12)] border border-transparent focus:outline-none"
               required
             />

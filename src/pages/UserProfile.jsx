@@ -211,6 +211,19 @@ export default function UserProfile() {
           </div>
         )}
 
+        {/* Edit Job Preferences */}
+        {friendStatus === 'self' && (
+          <div style={{ marginTop: 8 }}>
+            <button
+              className="add-btn"
+              onClick={() => navigate('/edit-job-preferences')}
+              style={{ backgroundColor: '#818cf8' }}
+            >
+              Edit Job Preferences
+            </button>
+          </div>
+        )}
+
         {/* Add Friend button - show when viewing someone else's profile */}
         {friendStatus !== 'self' && localStorage.getItem('current_user') && (
           <div style={{ marginTop: 8 }}>
