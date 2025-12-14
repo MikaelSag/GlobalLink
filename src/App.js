@@ -215,6 +215,7 @@ function App() {
         <Route path="/user-search" element={<UserSearch />} />
         <Route path="/profile/:name" element={<UserProfile />} /> 
         <Route path="/job-preferences" element={<JobPreferences />} />
+        <Route path="/edit-job-preferences" element={<JobPreferences />} />
         <Route path="/current-user-profile" element={<CurrentUserProfile />} />
       </Routes>
     </BrowserRouter>

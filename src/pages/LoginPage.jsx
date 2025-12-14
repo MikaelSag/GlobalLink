@@ -1,9 +1,12 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { setCurrentUser } from "../redux/userSlice";
 import Logo from "../components/Logo";
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
@@ -15,8 +18,9 @@ export default function LoginPage() {
       if (localStorage.getItem(username + "_password") === password) {
         const fullName = localStorage.getItem(username + "_full_name");
 
-        // Current user set in Local Storage
+        // Update both localStorage and Redux
         localStorage.setItem("current_user", fullName);
+        dispatch(setCurrentUser(fullName));
         navigate('/jobs');
       } else {
         alert("Invalid username or password");
