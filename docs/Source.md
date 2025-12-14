@@ -29,6 +29,23 @@ Front-end framework
   - URL: https://reactrouter.com/
   - How it is used: Client-side routing between pages (`/`, `/signup`, `/login`, `/jobs`, `/user-search`, `/profile/:name`, etc.). Defined in `src/App.js` using `BrowserRouter`, `Routes`, and `Route`.
 
+State management
+---------------
+- Redux Toolkit
+  - Package: `@reduxjs/toolkit`
+  - URL: https://redux-toolkit.js.org/
+  - How it is used: Modern Redux state management for global application state. Simplifies Redux logic with built-in utilities like `createSlice`. Configuration and store setup in `src/redux/store.js`.
+
+- React Redux
+  - Package: `react-redux`
+  - URL: https://react-redux.js.org/
+  - How it is used: Official React bindings for Redux. Provides `Provider` component to connect the Redux store to React components and hooks like `useSelector` and `useDispatch`.
+
+- Redux Persist
+  - Package: `redux-persist`
+  - URL: https://github.com/rt2zz/redux-persist
+  - How it is used: Persists Redux store data to localStorage, allowing state to survive page refreshes. Used for maintaining user session and profile data across browser sessions.
+
 Build tooling and CSS
 ---------------------
 - Create React App (`react-scripts`)
@@ -76,10 +93,14 @@ Exact versions (from `package.json`)
 - react: ^19.2.0
 - react-dom: ^19.2.0
 - react-router-dom: ^6.14.1
+- @reduxjs/toolkit: ^2.11.1
+- react-redux: ^9.2.0
+- redux-persist: ^6.0.0
 - react-scripts: ^5.0.1
 - tailwindcss: ^3.4.18
 - postcss: ^8.5.6
 - autoprefixer: ^10.4.21
+- web-vitals: ^2.1.4
 - testing libraries: versions present in `package.json` devDependencies / dependencies
 
 How to obtain the SDKs / packages
