@@ -122,6 +122,16 @@ export default function SignupPage() {
     setImageError("");
   };
 
+  // Handle first back button navigation
+  const handleCurrentUserBack = () => {
+    if (isEditMode) {
+      navigate('/current-user-profile');
+    }
+    else {
+      navigate('/');
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -355,7 +365,7 @@ export default function SignupPage() {
             <div className="flex justify-between">
               <button
                 type="button"
-                onClick={() => isEditMode ? navigate('/current-user-profile') : navigate('/')}
+                onClick={handleCurrentUserBack}
                 className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-3 rounded-xl shadow-sm transition"
               >
                 Back
